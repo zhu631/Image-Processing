@@ -1,0 +1,116 @@
+import glob
+import numpy as np
+from PIL import Image
+import os
+from tifffile import imsave
+from pathlib import Path
+
+#Define directories
+
+fileList = glob.glob('U://M2//image streching//raw//*.tiff') #Get list of all TIFF images in input directory
+inDir= 'U://M2//image streching//raw//' #Define directory of raw TIFF images from camera
+outDir= 'U://M2//image streching//converted//' #Define main output directory
+#Get stretch endpoints from all images
+
+#Use percentile for endpoints? (uses min and max if false)
+percentile= False
+print('Use percentile as endpoints?:',percentile)
+
+#Percentile endpoints to use for stretch if true
+percentileMin= 0.01
+percentileMax= 99.99
+
+#Load all images into an array
+print('Loading all images for endpoint analysis...')
+allCounts= np.array([np.array(Image.open(fname)) for fname in fileList])
+allCounts= np.reshape(allCounts, (640*512, len(fileList)))*0.04-273.15
+
+minT= np.min(allCounts)
+maxT= np.max(allCounts)
+
+
+if percentile == True:
+    minT=  np.percentile(allCounts, percentileMin)
+    maxT= np.percentile(allCounts, percentileMax)
+    print('Endpoint analysis complete: Using percentile temp values from all images as stretch endpoints')
+if percentile == False:
+    print('Endpoint analysis complete: Using min and max temp values from all images as stretch endpoints')
+    
+minTint= int(minT)
+maxTint= int(maxT)
+
+
+#Export un-scaled raw temp values TIFF
+
+#Make required output directory
+if not os.path.exists(outDir+'raw_temp\\'):
+    os.makedirs(outDir+'raw_temp\\')
+    print('Created raw_temp directory')
+else:
+    print('Skipping folder creation: directory "raw_temp" already exists')
+
+print('Writing raw temp images...')    
+
+#For each file in input directory
+for filename in os.listdir(inDir):   
+    rImage= Image.open(inDir+filename) #Open image
+    rArray= rArray= np.array(rImage)*0.04-273.15 #Convert DNs to temp C
+    rArray= rArray.astype(np.float32) #Cast array as float32 for writing TIFF
+    Image.fromarray(rArray).save(outDir+'raw_temp\\'+filename) #Write TIFF image
+      
+print('Raw temp conversion complete')    
+
+
+
+#Convert images to re-scaled TIFF
+
+#Make required output directory
+if not os.path.exists(outDir+'tiff\\'):
+    os.makedirs(outDir+'tiff\\')
+    print('Creating TIFF directory')
+else:
+    print('Skipping folder creation: directory "tiff" already exists')
+
+#Define TIFF LUT
+tValueFloat= np.linspace(start=0, stop=0.9999,num=10000,endpoint=True,dtype=np.float32) #Create 1D array of possible TIFF values   
+tValueInt= np.linspace(start=0, stop=9999,num=10000,endpoint=True,dtype=np.int32) #Create 1D array of possible TIFF values
+tTemp= np.linspace(start=minT,stop=maxT,num=10000,endpoint=True,dtype=np.float32) #Create 1D array of possible temp values from percentile endpints defined earlier
+
+tiffLUToutFloat= np.stack((tValueFloat, tTemp),axis=1) #Combine into single array for float
+tiffLUToutInt= np.stack((tValueInt, tTemp),axis=1) #Combine into single array for int
+
+#Write LUT to txt file
+print('Writing TIFF LUTs to main output directory...')
+
+out_name1 = "U:\\M2\\image streching\\converted\\tiff\\LUT_TIFF_float.txt"
+out_name2 = "U:\\M2\\image streching\\converted\\tiff\\LUT_TIFF_int.txt"
+np.savetxt(out_name1, tiffLUToutFloat, delimiter= '\t', fmt='%1.4f %f', header='Tiff_Value\tTemp_C')
+np.savetxt(out_name2, tiffLUToutInt, delimiter= '\t', fmt='%1.0f %f', header='Tiff_Value\tTemp_C')
+    
+print('Writing TIFF images...')
+
+#For each file in input directory
+for filename in os.listdir(inDir):
+    tImage= Image.open(inDir+filename) #Open image
+    tArray= np.array(tImage)*0.04-273.15 #Convert DNs to temp C
+    tArray = (np.searchsorted(tiffLUToutInt[:,1], tArray))/10000 #Get TIFF value from LUT
+    tArray= tArray.astype(np.float32) # Cast array as float32 for writing TIFF
+    Image.fromarray(tArray).save(outDir+'tiff\\'+filename) #Write TIFF image
+    
+print('Scaled TIFF conversion complete')
+
+fileList= []
+
+os.chdir(inDir)
+
+for file in glob.glob("*.tiff"):
+    fileList.append(file)
+    
+with open(outDir+'rawFileNames.txt', 'w') as f:
+    for item in fileList:
+        f.write("%s\n" % item)
+        
+f.close()
+
+
+
