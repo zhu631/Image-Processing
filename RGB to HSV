@@ -1,0 +1,75 @@
+from skimage.color import rgb2hsv
+import matplotlib.pyplot as plt
+import cv2
+
+rgb_img = cv2.imread("210226_oject-acre-54-g9x-be-row-1-range-2-rep-0-frame-photo-mosaic_yz-grid.jpg",-1)
+hsv_img = rgb2hsv(rgb_img)
+hue_img = hsv_img[:, :, 0]
+saturation_img = hsv_img[:, :, 1]
+value_img = hsv_img[:, :, 2]
+
+fig, (ax0, ax1, ax2,ax3) = plt.subplots(ncols=4, figsize=(8, 2))
+
+ax0.imshow(rgb_img)
+ax0.set_title("RGB image")
+ax0.axis('off')
+ax1.imshow(hue_img)
+ax1.set_title("Hue channel")
+ax1.axis('off')
+ax2.imshow(saturation_img, cmap='hsv')
+ax2.set_title("Saturation channel")
+ax2.axis('off')
+ax3.imshow(value_img)
+ax3.set_title("Value channel")
+ax3.axis('off')
+
+
+fig.tight_layout()
+value_threshold_mid = 0.41
+#binary_img = value_img > value_threshold
+value_threshold_upper = 0.6
+value_threshold_lower = 0.35
+#fig, (ax0,ax1) = plt.subplots(ncols=2, figsize=(8, 3))
+fig, ax0 = plt.subplots(figsize = (4,3))
+ax0.hist(value_img.ravel(), 512)
+ax0.set_title("Histogram of the Value channel with threshold")
+ax0.axvline(x=value_threshold_mid, color='r', linestyle='dashed', linewidth=2)
+ax0.axvline(x=value_threshold_upper, color='r', linestyle='dashed', linewidth=2)
+ax0.axvline(x=value_threshold_lower, color='r', linestyle='dashed', linewidth=2)
+"""
+ax0.set_xbound(0, 1.0)
+ax1.imshow(binary_img)
+ax1.set_title("Value-thresholded image")
+ax1.axis('off')
+
+fig.tight_layout()
+"""
+fig, ax0 = plt.subplots(figsize = (4,3))
+
+
+binary_img_canopy = (value_img > value_threshold_lower) & (value_img < value_threshold_upper)
+
+ax0.imshow(binary_img_canopy)
+ax0.set_title ("value thresholded image (canopy)")
+ax0.axis('off')
+
+fig.tight_layout()
+
+fig, ax0 = plt.subplots(figsize = (4,3))
+
+binary_img_lower = (value_img > value_threshold_lower) & (value_img < value_threshold_mid)
+
+ax0.imshow(binary_img_lower)
+ax0.set_title ("value thresholded image (lower)")
+ax0.axis('off')
+
+fig.tight_layout()
+fig, ax0 = plt.subplots(figsize = (4,3))
+binary_img_upper = (value_img > value_threshold_mid) & (value_img < value_threshold_upper)
+
+ax0.imshow(binary_img_upper)
+ax0.set_title ("value thresholded image (upper)")
+ax0.axis('off')
+
+fig.tight_layout()
+plt.show()
