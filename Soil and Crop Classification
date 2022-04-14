@@ -1,0 +1,20 @@
+import numpy as np
+import cv2
+from skimage.filters import threshold_otsu, threshold_adaptive
+from PIL import Image
+import matplotlib.pyplot as plt
+img1 = cv2.imread('20190824_165747_250_8b_smallplot.jpg',-1)
+size = np.array(img1.shape)
+pix_array1 = np.array(img1)
+
+pixel_values = np.reshape(pix_array1,(size[0], size[1]))
+    
+img = Image.fromarray(pixel_values)
+
+img3 = np.array(img)
+
+block_size = 21
+# regional thresnholding method to classify soils and plants
+binary_adaptive1 = threshold_adaptive(img3, block_size, method='gaussian', offset=0)
+
+plt.imshow(binary_adaptive1)
